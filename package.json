@@ -1,0 +1,20 @@
+{
+  "name": "com.mparysz.context-steering-behavior",
+  "version": "1.0.0",
+  "displayName": "Context Steering Behavior",
+  "description": "Implementation of Context Steering Behavior which handles AI movement to target together with obstacles avoidance",
+  "unity": "2019.1",
+  "dependencies": {},
+  "keywords": ["tool", "utility", "context", "steering", "behavior", "2d"],
+  "author": {
+    "name": "Michal Parysz",
+    "email": "miparysz@gmail.com"
+  },
+  "samples": [
+    {
+        "displayName": "Sample Context Steering Behavior",
+        "description": "Scene with example implementation",
+        "path": "Samples/"
+    }
+  ]
+}
