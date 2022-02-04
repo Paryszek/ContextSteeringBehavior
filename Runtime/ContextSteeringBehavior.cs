@@ -23,25 +23,51 @@ namespace MParysz.ContextSteeringBehavior {
     [SerializeField] private bool displayChaseDirections = false;
     [SerializeField] private bool displayOutcomeDirections = true;
     [SerializeField] private bool displayResultDirection = true;
+    [SerializeField] private bool displayAdjustedToCorederDirection = true;
 
     private List<Vector2> moveDirections = new List<Vector2>();
     private GameObject targetGameObject;
     private Vector2 target;
+    private Vector2 size;
     private float targetRadius;
-    private float colliderSize;
+    private float sizeMarginRatio;
     private float detectObstaclesRatio;
+    private float cornerDetectionDistance;
     private bool initialized = false;
 
-    public void Init(GameObject targetGameObject, float targetRadius, float colliderSize, float detectObstaclesRatio = 1.0f) {
-      this.targetGameObject = targetGameObject;
+    private Vector2 currentDirection;
+    private Vector2 currentDirectionBeforeCornerAdjustment;
+
+    public void Init(GameObject targetGameObject, float targetRadius, Vector2 size, float detectObstaclesRatio = 0.1f, float sizeMarginRatio = 1.25f, float cornerDetectionDistance = 2.0f) {
+      this.size = size;
       this.targetRadius = targetRadius;
-      this.colliderSize = colliderSize;
+      this.sizeMarginRatio = sizeMarginRatio;
+      this.targetGameObject = targetGameObject;
       this.detectObstaclesRatio = detectObstaclesRatio;
+      this.cornerDetectionDistance = cornerDetectionDistance;
+
       this.initialized = true;
     }
 
     private void Awake() {
       GenerateMoveDirections();
+    }
+
+    private void OnDrawGizmos() {
+      if (currentDirection == null) {
+        return;
+      }
+
+      var endPosition = transform.TransformPoint(currentDirectionBeforeCornerAdjustment * targetRadius);
+      var radiusDetection = Vector2.Distance(transform.position, endPosition);
+      var hit = Physics2D.BoxCast(transform.TransformPoint(currentDirectionBeforeCornerAdjustment), size * sizeMarginRatio, 0.0f, currentDirectionBeforeCornerAdjustment, radiusDetection * detectObstaclesRatio);
+
+      if (hit && hit.collider.gameObject.name != targetGameObject.name && hit.distance < cornerDetectionDistance) {
+        Gizmos.color = Color.red;
+        Vector2 colliderPosition = hit.collider.transform.position;
+        var directionFromColliderToHitPoint = (hit.point - colliderPosition).normalized;
+        Gizmos.DrawWireCube(hit.point + (directionFromColliderToHitPoint * size * 0.5f), size * sizeMarginRatio);
+      }
     }
 
     public Vector2 GetDirectionToMove() {
@@ -50,15 +76,46 @@ namespace MParysz.ContextSteeringBehavior {
       }
 
       this.target = targetGameObject.transform.position;
-      var chaseBehaviorDirections = CreateEmptyBehaviorDirectionList();
-      var avoidBehaviorDirections = CreateEmptyBehaviorDirectionList();
-      var outcomeBehaviorDirections = new List<Vector2>();
 
-      CalculateWeightsForAvoidBehaviorDirections(avoidBehaviorDirections);
-      CalculateWeightsForChaseBehaviorDirections(chaseBehaviorDirections);
-      CalculateOutcomeBehaviorDirections(chaseBehaviorDirections, avoidBehaviorDirections, outcomeBehaviorDirections);
+      var chaseBehaviorDirections = CalculateWeightsForChaseBehaviorDirections();
+      var hit = DetectCornerAhead();
 
-      return GetMeanDirectionFromOutcomeBehaviorDirections(outcomeBehaviorDirections);
+      if (IsCornerAhead(hit)) {
+        currentDirection = GetMeanDirectionFromOutcomeBehaviorDirections(CalculateOutcomeBehaviorDirections(chaseBehaviorDirections));
+        currentDirectionBeforeCornerAdjustment = new Vector2(currentDirection.x, currentDirection.y);
+        currentDirection = AdjustDirectionToCorner(hit);
+        return currentDirection;
+      }
+
+      var avoidBehaviorDirections = CalculateWeightsForAvoidBehaviorDirections();
+      currentDirection = GetMeanDirectionFromOutcomeBehaviorDirections(CalculateOutcomeBehaviorDirections(chaseBehaviorDirections, avoidBehaviorDirections));
+
+      return currentDirection;
+    }
+
+    private bool IsCornerAhead(RaycastHit2D hit) {
+      return hit && hit.collider.gameObject.name != targetGameObject.name && hit.distance < cornerDetectionDistance;
+    }
+
+    private Vector2 AdjustDirectionToCorner(RaycastHit2D hit) {
+      Vector2 colliderPosition = hit.collider.transform.position;
+      var directionFromColliderToHitPoint = (hit.point - colliderPosition).normalized;
+
+      var adjustedDirection = new Vector2((currentDirection.x + directionFromColliderToHitPoint.x) / 2, (currentDirection.y + directionFromColliderToHitPoint.y) / 2).normalized;
+
+      if (displayAdjustedToCorederDirection) {
+        Debug.DrawRay(hit.point, directionFromColliderToHitPoint, Color.cyan, 0.1f);
+        Debug.DrawLine(transform.position, transform.TransformPoint(adjustedDirection * targetRadius), Color.blue, 0.05f);
+      }
+
+      return adjustedDirection;
+    }
+
+    private RaycastHit2D DetectCornerAhead() {
+      var endPosition = transform.TransformPoint(currentDirection * targetRadius);
+      var radiusDetection = Vector2.Distance(transform.position, endPosition);
+
+      return Physics2D.BoxCast(transform.TransformPoint(currentDirection), size * sizeMarginRatio, 0.0f, currentDirection, radiusDetection * detectObstaclesRatio);
     }
 
     private Vector2 GetMeanDirectionFromOutcomeBehaviorDirections(List<Vector2> outcomeBehaviorDirections) {
@@ -76,34 +133,46 @@ namespace MParysz.ContextSteeringBehavior {
       var meanDirection = new Vector2(meanX, meanY).normalized;
 
       if (displayResultDirection) {
-        Debug.DrawLine(transform.position, transform.TransformPoint(meanDirection), Color.blue * 10.0f, 0.05f);
+        Debug.DrawLine(transform.position, transform.TransformPoint(meanDirection * targetRadius), Color.gray, 0.05f);
       }
 
       return meanDirection;
     }
 
-    private void CalculateOutcomeBehaviorDirections(List<BehaviorDirection> chaseBehaviorDirections, List<BehaviorDirection> avoidBehaviorDirections, List<Vector2> outcomeBehaviorDirections) {
+    private List<Vector2> CalculateOutcomeBehaviorDirections(List<BehaviorDirection> chaseBehaviorDirections, List<BehaviorDirection> avoidBehaviorDirections = null) {
+      List<Vector2> outcomeBehaviorDirections = new List<Vector2>();
+
       for (var i = 0; i < chaseBehaviorDirections.Count; i++) {
         var chaseBehaviorDirection = chaseBehaviorDirections[i];
-        var avoidBehaviorDirection = avoidBehaviorDirections[i];
 
         if (chaseBehaviorDirection.distance == 0) {
           continue;
         }
 
-        var rawDirection = chaseBehaviorDirection.direction * Mathf.Clamp(chaseBehaviorDirection.weight - avoidBehaviorDirection.weight, -chaseBehaviorDirection.weight, chaseBehaviorDirection.weight);
+        Vector2 rawDirection;
+
+        if (avoidBehaviorDirections != null) {
+          var avoidBehaviorDirection = avoidBehaviorDirections[i];
+          rawDirection = chaseBehaviorDirection.direction * Mathf.Clamp(chaseBehaviorDirection.weight - avoidBehaviorDirection.weight, -chaseBehaviorDirection.weight, chaseBehaviorDirection.weight);
+        } else {
+          rawDirection = chaseBehaviorDirection.direction * Mathf.Clamp(chaseBehaviorDirection.weight, -chaseBehaviorDirection.weight, chaseBehaviorDirection.weight);
+        }
+
         outcomeBehaviorDirections.Add(rawDirection);
 
         if (displayOutcomeDirections) {
-          Debug.DrawLine(transform.position, transform.TransformPoint(rawDirection), Color.yellow, 0.05f);
+          Debug.DrawLine(transform.position, transform.TransformPoint(rawDirection * 10.0f), Color.yellow, 0.05f);
         }
       }
+
+      return outcomeBehaviorDirections;
     }
 
-    private void CalculateWeightsForChaseBehaviorDirections(List<BehaviorDirection> chaseBehaviorDirections) {
+    private List<BehaviorDirection> CalculateWeightsForChaseBehaviorDirections() {
+      var chaseBehaviorDirections = CreateEmptyBehaviorDirectionList();
+
       foreach (var chaseBehaviorDirection in chaseBehaviorDirections) {
-        var startPosition = transform.TransformPoint(chaseBehaviorDirection.direction * colliderSize);
-        var distance = Vector2.Distance(startPosition, target);
+        var distance = Vector2.Distance(transform.TransformPoint(chaseBehaviorDirection.direction), target);
 
         if (Vector2.Distance(transform.position, target) < distance) {
           continue;
@@ -111,8 +180,8 @@ namespace MParysz.ContextSteeringBehavior {
 
         chaseBehaviorDirection.distance = distance;
 
-        var endPosition = transform.TransformPoint(chaseBehaviorDirection.direction * colliderSize * targetRadius);
-        var radiusDetection = Vector2.Distance(startPosition, endPosition);
+        var endPosition = transform.TransformPoint(chaseBehaviorDirection.direction * targetRadius);
+        var radiusDetection = Vector2.Distance(transform.position, endPosition);
 
         var weight = Mathf.Clamp(radiusDetection / chaseBehaviorDirection.distance, 0, radiusDetection);
 
@@ -122,27 +191,31 @@ namespace MParysz.ContextSteeringBehavior {
           Debug.DrawLine(transform.position, transform.TransformPoint(chaseBehaviorDirection.direction * weight), Color.green, 0.05f);
         }
       }
+
+      return chaseBehaviorDirections;
     }
 
-    private void CalculateWeightsForAvoidBehaviorDirections(List<BehaviorDirection> avoidBehaviorDirections) {
-      foreach (var avoidBehaviorDirection in avoidBehaviorDirections) {
-        var startPosition = transform.TransformPoint(avoidBehaviorDirection.direction * colliderSize);
-        var endPosition = transform.TransformPoint(avoidBehaviorDirection.direction * colliderSize * targetRadius);
-        var hitEndPosition = transform.TransformPoint(avoidBehaviorDirection.direction * colliderSize * targetRadius * detectObstaclesRatio);
-        var radiusDetection = Vector2.Distance(startPosition, endPosition);
+    private List<BehaviorDirection> CalculateWeightsForAvoidBehaviorDirections() {
+      var avoidBehaviorDirections = CreateEmptyBehaviorDirectionList();
 
-        var hit = Physics2D.Linecast(startPosition, hitEndPosition);
+      foreach (var avoidBehaviorDirection in avoidBehaviorDirections) {
+        var endPosition = transform.TransformPoint(avoidBehaviorDirection.direction * targetRadius);
+        var radiusDetection = Vector2.Distance(transform.position, endPosition);
+
+        var hit = Physics2D.Raycast(transform.position, avoidBehaviorDirection.direction, radiusDetection * detectObstaclesRatio);
 
         if (hit && hit.collider.gameObject.name != this.targetGameObject.name) {
-          avoidBehaviorDirection.distance = Vector2.Distance(startPosition, hit.collider.transform.position);
+          avoidBehaviorDirection.distance = Vector2.Distance(transform.TransformPoint(avoidBehaviorDirection.direction), hit.collider.transform.position);
           var weight = Mathf.Clamp(radiusDetection / avoidBehaviorDirection.distance, 0, radiusDetection);
           avoidBehaviorDirection.weight = weight;
 
           if (displayAvoidDirections) {
-            Debug.DrawLine(startPosition, transform.TransformPoint(avoidBehaviorDirection.direction * weight), Color.red, 0.05f);
+            Debug.DrawLine(transform.position, transform.TransformPoint(avoidBehaviorDirection.direction * size * 1.5f), Color.red, 0.05f);
           }
         }
       }
+
+      return avoidBehaviorDirections;
     }
 
     private List<BehaviorDirection> CreateEmptyBehaviorDirectionList() {
@@ -162,10 +235,10 @@ namespace MParysz.ContextSteeringBehavior {
       moveDirections.Add(Vector2.down);
       moveDirections.Add(Vector2.left);
       moveDirections.Add(Vector2.right);
-      moveDirections.Add(new Vector2(0.75f, 0.75f));
-      moveDirections.Add(new Vector2(-0.75f, -0.75f));
-      moveDirections.Add(new Vector2(-0.75f, 0.75f));
-      moveDirections.Add(new Vector2(0.75f, -0.75f));
+      moveDirections.Add(new Vector2(0.75f, 0.75f).normalized);
+      moveDirections.Add(new Vector2(-0.75f, -0.75f).normalized);
+      moveDirections.Add(new Vector2(-0.75f, 0.75f).normalized);
+      moveDirections.Add(new Vector2(0.75f, -0.75f).normalized);
     }
   }
 }

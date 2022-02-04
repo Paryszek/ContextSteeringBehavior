@@ -9,6 +9,8 @@ public class Manager : MonoBehaviour {
   private ContextSteeringBehavior contextSteeringBehavior;
   private BoxCollider2D boxCollider2D;
   private Rigidbody2D rigidBody2D;
+  private float timeDelay = 0.5f;
+  private float timeValue = 0.0f;
 
   private void Awake() {
     rigidBody2D = GetComponent<Rigidbody2D>();
@@ -17,12 +19,17 @@ public class Manager : MonoBehaviour {
   }
 
   private void Start() {
-    var colliderSize = boxCollider2D.bounds.size + new Vector3(boxCollider2D.offset.x, boxCollider2D.offset.y);
-    contextSteeringBehavior.Init(target, detectTargetRadius, colliderSize.x, detectObstaclesRatio);
+    var size = transform.lossyScale;
+    contextSteeringBehavior.Init(target, detectTargetRadius, size, detectObstaclesRatio);
   }
 
   private void Update() {
+    if (timeDelay > timeValue) {
+      timeValue += Time.deltaTime;
+      return;
+    }
+
     var direction = contextSteeringBehavior.GetDirectionToMove();
-    rigidBody2D.velocity = new Vector2(direction.x * 200.0f * Time.deltaTime, direction.y * 200.0f * Time.deltaTime);
+    rigidBody2D.velocity = new Vector2(direction.x * 1000.0f * Time.deltaTime, direction.y * 1000.0f * Time.deltaTime);
   }
 }
