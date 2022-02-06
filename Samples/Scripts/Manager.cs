@@ -20,7 +20,7 @@ public class Manager : MonoBehaviour {
 
   private void Start() {
     var size = transform.lossyScale;
-    contextSteeringBehavior.Init(target, detectTargetRadius, size, detectObstaclesRatio);
+    contextSteeringBehavior.Init(target.transform.position, detectTargetRadius, size, detectObstaclesRatio);
   }
 
   private void Update() {

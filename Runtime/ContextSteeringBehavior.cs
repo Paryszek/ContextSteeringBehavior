@@ -26,7 +26,6 @@ namespace MParysz.ContextSteeringBehavior {
     [SerializeField] private bool displayAdjustedToCorederDirection = true;
 
     private List<Vector2> moveDirections = new List<Vector2>();
-    private GameObject targetGameObject;
     private Vector2 target;
     private Vector2 size;
     private float targetRadius;
@@ -34,19 +33,27 @@ namespace MParysz.ContextSteeringBehavior {
     private float detectObstaclesRatio;
     private float cornerDetectionDistance;
     private bool initialized = false;
+    private string targetName;
 
     private Vector2 currentDirection;
     private Vector2 currentDirectionBeforeCornerAdjustment;
 
-    public void Init(GameObject targetGameObject, float targetRadius, Vector2 size, float detectObstaclesRatio = 0.1f, float sizeMarginRatio = 1.25f, float cornerDetectionDistance = 2.0f) {
+    public void Init(Vector2 target, float targetRadius, Vector2 size, float detectObstaclesRatio = 0.1f, float sizeMarginRatio = 1.25f, float cornerDetectionDistance = 2.0f, string targetName = "") {
       this.size = size;
+      this.target = target;
       this.targetRadius = targetRadius;
+      this.targetName = targetName;
       this.sizeMarginRatio = sizeMarginRatio;
-      this.targetGameObject = targetGameObject;
       this.detectObstaclesRatio = detectObstaclesRatio;
       this.cornerDetectionDistance = cornerDetectionDistance;
 
       this.initialized = true;
+    }
+
+    public void UpdateTarget(Vector2 target, float targetRadius, string targetName = "") {
+      this.target = target;
+      this.targetName = targetName;
+      this.targetRadius = targetRadius;
     }
 
     private void Awake() {
@@ -62,7 +69,7 @@ namespace MParysz.ContextSteeringBehavior {
       var radiusDetection = Vector2.Distance(transform.position, endPosition);
       var hit = Physics2D.BoxCast(transform.TransformPoint(currentDirectionBeforeCornerAdjustment), size * sizeMarginRatio, 0.0f, currentDirectionBeforeCornerAdjustment, radiusDetection * detectObstaclesRatio);
 
-      if (hit && hit.collider.gameObject.name != targetGameObject.name && hit.distance < cornerDetectionDistance) {
+      if (hit && hit.collider.gameObject.name != targetName && hit.distance < cornerDetectionDistance) {
         Gizmos.color = Color.red;
         Vector2 colliderPosition = hit.collider.transform.position;
         var directionFromColliderToHitPoint = (hit.point - colliderPosition).normalized;
@@ -74,8 +81,6 @@ namespace MParysz.ContextSteeringBehavior {
       if (!initialized) {
         Debug.LogError("Error while using method GetDirectionToMove() - ContextSteeringBehavior should be initialized first with Init() method");
       }
-
-      this.target = targetGameObject.transform.position;
 
       var chaseBehaviorDirections = CalculateWeightsForChaseBehaviorDirections();
       var hit = DetectCornerAhead();
@@ -94,7 +99,7 @@ namespace MParysz.ContextSteeringBehavior {
     }
 
     private bool IsCornerAhead(RaycastHit2D hit) {
-      return hit && hit.collider.gameObject.name != targetGameObject.name && hit.distance < cornerDetectionDistance;
+      return hit && hit.collider.gameObject.name != targetName && hit.distance < cornerDetectionDistance;
     }
 
     private Vector2 AdjustDirectionToCorner(RaycastHit2D hit) {
@@ -204,7 +209,7 @@ namespace MParysz.ContextSteeringBehavior {
 
         var hit = Physics2D.Raycast(transform.position, avoidBehaviorDirection.direction, radiusDetection * detectObstaclesRatio);
 
-        if (hit && hit.collider.gameObject.name != this.targetGameObject.name) {
+        if (hit && hit.collider.gameObject.name != this.targetName) {
           avoidBehaviorDirection.distance = Vector2.Distance(transform.TransformPoint(avoidBehaviorDirection.direction), hit.collider.transform.position);
           var weight = Mathf.Clamp(radiusDetection / avoidBehaviorDirection.distance, 0, radiusDetection);
           avoidBehaviorDirection.weight = weight;
