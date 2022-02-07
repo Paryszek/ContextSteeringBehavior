@@ -739,9 +739,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   displayAvoidDirections: 1
-  displayChaseDirections: 1
+  displayChaseDirections: 0
   displayOutcomeDirections: 0
-  displayResultDirection: 1
+  displayResultDirection: 0
+  displayAdjustedToCornerDirection: 0
 --- !u!4 &1272406414
 Transform:
   m_ObjectHideFlags: 0
@@ -770,8 +771,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 2041695559}
-  detectTargetRadius: 10
-  detectObstaclesRatio: 0.1
+  cornerDetectionDistance: 1
+  obstaclesDetectionDistance: 1
 --- !u!1 &1274286195
 GameObject:
   m_ObjectHideFlags: 0

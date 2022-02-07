@@ -1,6 +1,6 @@
 {
   "name": "com.mparysz.context-steering-behavior",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "displayName": "Context Steering Behavior",
   "description": "Implementation of Context Steering Behavior which handles AI movement to target together with obstacles avoidance",
   "unity": "2019.1",
