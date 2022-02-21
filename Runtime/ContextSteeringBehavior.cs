@@ -33,15 +33,17 @@ namespace MParysz.ContextSteeringBehavior {
     private float cornerDetectionDistance;
     private string targetName;
     private string obstacleTag;
+    private int layerMask;
     private bool initialized = false;
 
     private Vector2 currentDirection;
     private Vector2 currentDirectionBeforeCornerAdjustment;
 
-    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", string obstacleTag = "") {
+    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", string obstacleTag = "", int layerMask = 0) {
       this.size = size;
       this.target = target;
       this.targetName = targetName;
+      this.layerMask = layerMask;
       this.obstacleTag = obstacleTag;
       this.sizeMarginRatio = sizeMarginRatio;
       this.obstaclesDetectionDistance = obstaclesDetectionDistance;
@@ -75,7 +77,7 @@ namespace MParysz.ContextSteeringBehavior {
 
       var endPosition = transform.TransformPoint(currentDirectionBeforeCornerAdjustment * cornerDetectionDistance);
       var radiusDetection = Vector2.Distance(transform.position, endPosition);
-      var hit = Physics2D.BoxCast(transform.TransformPoint(currentDirectionBeforeCornerAdjustment), size * sizeMarginRatio, 0.0f, currentDirectionBeforeCornerAdjustment, radiusDetection);
+      var hit = Physics2D.BoxCast(transform.TransformPoint(currentDirectionBeforeCornerAdjustment), size * sizeMarginRatio, 0.0f, currentDirectionBeforeCornerAdjustment, radiusDetection, layerMask);
 
       if (hit && hit.collider.gameObject.name != targetName) {
         Gizmos.color = Color.red;
@@ -124,7 +126,7 @@ namespace MParysz.ContextSteeringBehavior {
       var endPosition = transform.TransformPoint(currentDirection * cornerDetectionDistance);
       var radiusDetection = Vector2.Distance(transform.position, endPosition);
 
-      return Physics2D.BoxCast(transform.TransformPoint(currentDirection), size * sizeMarginRatio, 0.0f, currentDirection, radiusDetection);
+      return Physics2D.BoxCast(transform.TransformPoint(currentDirection), size * sizeMarginRatio, 0.0f, currentDirection, radiusDetection, layerMask);
     }
 
     private Vector2 GetMeanDirectionFromOutcomeBehaviorDirections(List<Vector2> outcomeBehaviorDirections) {
@@ -211,7 +213,7 @@ namespace MParysz.ContextSteeringBehavior {
         var endPosition = transform.TransformPoint(avoidBehaviorDirection.direction * obstaclesDetectionDistance);
         var radiusDetection = Vector2.Distance(transform.position, endPosition);
 
-        var hit = Physics2D.Raycast(transform.position, avoidBehaviorDirection.direction, radiusDetection);
+        var hit = Physics2D.Raycast(transform.position, avoidBehaviorDirection.direction, radiusDetection, layerMask);
 
         if (IsObstacleAhead(hit)) {
           avoidBehaviorDirection.distance = Vector2.Distance(transform.TransformPoint(avoidBehaviorDirection.direction), hit.collider.transform.position);
