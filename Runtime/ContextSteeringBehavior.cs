@@ -39,7 +39,7 @@ namespace MParysz.ContextSteeringBehavior {
     private Vector2 currentDirection;
     private Vector2 currentDirectionBeforeCornerAdjustment;
 
-    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", string obstacleTag = "", int layerMask = 0) {
+    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", string obstacleTag = "", int layerMask = 1 << 0) {
       this.size = size;
       this.target = target;
       this.targetName = targetName;
