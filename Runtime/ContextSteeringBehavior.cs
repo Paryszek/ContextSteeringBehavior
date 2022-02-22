@@ -32,19 +32,17 @@ namespace MParysz.ContextSteeringBehavior {
     private float obstaclesDetectionDistance;
     private float cornerDetectionDistance;
     private string targetName;
-    private string obstacleTag;
     private int layerMask;
     private bool initialized = false;
 
     private Vector2 currentDirection;
     private Vector2 currentDirectionBeforeCornerAdjustment;
 
-    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", string obstacleTag = "", int layerMask = 1 << 0) {
+    public void Init(Vector2 target, Vector2 size, float sizeMarginRatio = 1.0f, float obstaclesDetectionDistance = 1.0f, float cornerDetectionDistance = 1.0f, string targetName = "", int layerMask = 1 << 0) {
       this.size = size;
       this.target = target;
       this.targetName = targetName;
       this.layerMask = layerMask;
-      this.obstacleTag = obstacleTag;
       this.sizeMarginRatio = sizeMarginRatio;
       this.obstaclesDetectionDistance = obstaclesDetectionDistance;
       this.cornerDetectionDistance = cornerDetectionDistance;
@@ -242,10 +240,7 @@ namespace MParysz.ContextSteeringBehavior {
     }
 
     private bool IsObstacleAhead(RaycastHit2D hit) {
-      if (obstacleTag == "")
-        return hit && hit.collider.gameObject.name != targetName;
-      else
-        return hit && hit.collider.gameObject.name != targetName && hit.collider.gameObject.tag == obstacleTag;
+      return hit && hit.collider.gameObject.name != targetName;
     }
 
     private void GenerateMoveDirections() {
